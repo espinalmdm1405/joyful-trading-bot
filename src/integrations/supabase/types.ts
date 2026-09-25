@@ -14,7 +14,150 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      accounts: {
+        Row: {
+          balance: number
+          bot_enabled: boolean
+          created_at: string
+          risk_pct: number
+          start_balance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          bot_enabled?: boolean
+          created_at?: string
+          risk_pct?: number
+          start_balance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          bot_enabled?: boolean
+          created_at?: string
+          risk_pct?: number
+          start_balance?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bot_logs: {
+        Row: {
+          created_at: string
+          id: string
+          level: string
+          message: string
+          symbol: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: string
+          message: string
+          symbol?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+          symbol?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mt5_connections: {
+        Row: {
+          broker: string
+          created_at: string
+          id: string
+          login: string
+          server: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          broker?: string
+          created_at?: string
+          id?: string
+          login: string
+          server: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          broker?: string
+          created_at?: string
+          id?: string
+          login?: string
+          server?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      positions: {
+        Row: {
+          close_price: number | null
+          close_reason: string | null
+          closed_at: string | null
+          confidence: number
+          entry_price: number
+          id: string
+          open_reason: string
+          opened_at: string
+          pnl: number | null
+          side: string
+          size: number
+          status: string
+          stop_loss: number
+          symbol: string
+          take_profit: number
+          user_id: string
+        }
+        Insert: {
+          close_price?: number | null
+          close_reason?: string | null
+          closed_at?: string | null
+          confidence?: number
+          entry_price: number
+          id?: string
+          open_reason?: string
+          opened_at?: string
+          pnl?: number | null
+          side: string
+          size: number
+          status?: string
+          stop_loss: number
+          symbol: string
+          take_profit: number
+          user_id: string
+        }
+        Update: {
+          close_price?: number | null
+          close_reason?: string | null
+          closed_at?: string | null
+          confidence?: number
+          entry_price?: number
+          id?: string
+          open_reason?: string
+          opened_at?: string
+          pnl?: number | null
+          side?: string
+          size?: number
+          status?: string
+          stop_loss?: number
+          symbol?: string
+          take_profit?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
