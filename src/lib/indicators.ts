@@ -6,10 +6,12 @@ export type Candle = {
   c: number;
 };
 
+const num = (v: number | undefined): number => (typeof v === "number" ? v : 0);
+
 export function ema(values: number[], period: number): number[] {
   const k = 2 / (period + 1);
   const out: number[] = [];
-  let prev = values[0] ?? 0;
+  let prev = num(values[0]);
   values.forEach((v, i) => {
     prev = i === 0 ? v : v * k + prev * (1 - k);
     out.push(prev);
@@ -22,7 +24,7 @@ export function rsi(values: number[], period = 14): number {
   let gain = 0;
   let loss = 0;
   for (let i = values.length - period; i < values.length; i++) {
-    const diff = values[i] - values[i - 1];
+    const diff = num(values[i]) - num(values[i - 1]);
     if (diff >= 0) gain += diff;
     else loss -= diff;
   }
@@ -37,19 +39,21 @@ export function atr(candles: Candle[], period = 14): number {
   for (let i = 1; i < candles.length; i++) {
     const c = candles[i];
     const p = candles[i - 1];
+    if (!c || !p) continue;
     trs.push(Math.max(c.h - c.l, Math.abs(c.h - p.c), Math.abs(c.l - p.c)));
   }
   const slice = trs.slice(-period);
-  return slice.reduce((a, b) => a + b, 0) / (slice.length || 1);
+  if (slice.length === 0) return 0;
+  return slice.reduce((a, b) => a + b, 0) / slice.length;
 }
 
 export function macdHistogram(values: number[]): number {
   const fast = ema(values, 12);
   const slow = ema(values, 26);
-  const macdLine = values.map((_, i) => fast[i] - slow[i]);
+  const macdLine = values.map((_, i) => num(fast[i]) - num(slow[i]));
   const signal = ema(macdLine, 9);
   const last = values.length - 1;
-  return macdLine[last] - signal[last];
+  return num(macdLine[last]) - num(signal[last]);
 }
 
 export type Analysis = {
@@ -70,23 +74,23 @@ export type Analysis = {
 export function analyze(candles: Candle[]): Analysis | null {
   if (candles.length < 60) return null;
   const closes = candles.map((c) => c.c);
-  const last = closes[closes.length - 1];
-  const e9 = ema(closes, 9);
-  const e21 = ema(closes, 21);
-  const e50 = ema(closes, 50);
   const i = closes.length - 1;
+  const last = num(closes[i]);
+  const e9 = num(ema(closes, 9)[i]);
+  const e21 = num(ema(closes, 21)[i]);
+  const e50 = num(ema(closes, 50)[i]);
   const r = rsi(closes, 14);
   const a = atr(candles, 14);
   const hist = macdHistogram(closes);
-  const dayAgo = closes[Math.max(0, closes.length - 26)];
+  const reference = num(closes[Math.max(0, closes.length - 26)]);
 
   let score = 0;
   const notes: string[] = [];
 
-  if (e9[i] > e21[i] && e21[i] > e50[i]) {
+  if (e9 > e21 && e21 > e50) {
     score += 2;
     notes.push("Medias alineadas al alza (9 > 21 > 50)");
-  } else if (e9[i] < e21[i] && e21[i] < e50[i]) {
+  } else if (e9 < e21 && e21 < e50) {
     score -= 2;
     notes.push("Medias alineadas a la baja (9 < 21 < 50)");
   } else {
@@ -115,7 +119,7 @@ export function analyze(candles: Candle[]): Analysis | null {
     notes.push(`RSI ${r.toFixed(0)}: fuerza vendedora`);
   }
 
-  if (last > e50[i]) {
+  if (last > e50) {
     score += 1;
     notes.push("Precio por encima de la media de 50");
   } else {
@@ -123,19 +127,19 @@ export function analyze(candles: Candle[]): Analysis | null {
     notes.push("Precio por debajo de la media de 50");
   }
 
-  const direction = score >= 3 ? "buy" : score <= -3 ? "sell" : "flat";
+  const direction: Analysis["direction"] = score >= 3 ? "buy" : score <= -3 ? "sell" : "flat";
 
   return {
     price: last,
-    changePct: dayAgo ? ((last - dayAgo) / dayAgo) * 100 : 0,
+    changePct: reference ? ((last - reference) / reference) * 100 : 0,
     score,
     direction,
     confidence: Math.min(100, Math.round((Math.abs(score) / 5) * 100)),
     atr: a,
     rsi: r,
-    ema9: e9[i],
-    ema21: e21[i],
-    ema50: e50[i],
+    ema9: e9,
+    ema21: e21,
+    ema50: e50,
     macdHist: hist,
     notes,
   };
