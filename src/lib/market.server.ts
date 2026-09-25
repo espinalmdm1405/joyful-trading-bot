@@ -19,19 +19,30 @@ export function marketBySymbol(symbol: string) {
   return MARKETS.find((m) => m.symbol === symbol);
 }
 
-export async function fetchCandles(yahoo: string): Promise<Candle[]> {
-  const url =
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahoo)}` +
-    `?interval=15m&range=1mo`;
+const HOSTS = ["https://query2.finance.yahoo.com", "https://query1.finance.yahoo.com"];
 
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
-      Accept: "application/json",
-    },
-  });
-  if (!res.ok) throw new Error(`Datos de mercado no disponibles (${res.status})`);
+export async function fetchCandles(yahoo: string): Promise<Candle[]> {
+  const path = `/v8/finance/chart/${encodeURIComponent(yahoo)}?interval=15m&range=1mo`;
+
+  let res: Response | null = null;
+  for (const host of HOSTS) {
+    try {
+      const attempt = await fetch(`${host}${path}`, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
+          Accept: "application/json",
+        },
+      });
+      if (attempt.ok) {
+        res = attempt;
+        break;
+      }
+    } catch {
+      // try next host
+    }
+  }
+  if (!res) throw new Error("Datos de mercado no disponibles ahora");
 
   const json = (await res.json()) as {
     chart?: {
