@@ -253,12 +253,13 @@ function Dashboard() {
           value={[risk]}
           onValueChange={(v) => {
             riskTouched.current = true;
-            setRiskDraft(v[0]);
+            setRiskDraft(v[0] ?? 0.5);
           }}
           onValueCommit={async (v) => {
-            await riskFn({ data: { riskPct: v[0] } });
+            const next = v[0] ?? 0.5;
+            await riskFn({ data: { riskPct: next } });
             await qc.invalidateQueries({ queryKey: ["dashboard"] });
-            toast.success(`Riesgo ajustado a ${v[0].toFixed(1)}% por operación.`);
+            toast.success(`Riesgo ajustado a ${next.toFixed(1)}% por operación.`);
           }}
         />
         <div className="mt-2 flex justify-between text-xs text-muted-foreground">

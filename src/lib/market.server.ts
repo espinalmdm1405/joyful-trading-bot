@@ -73,7 +73,7 @@ export async function fetchCandles(yahoo: string): Promise<Candle[]> {
     const l = q.low?.[i];
     const c = q.close?.[i];
     if (o == null || h == null || l == null || c == null) continue;
-    candles.push({ t: ts[i] * 1000, o, h, l, c });
+    candles.push({ t: (ts[i] ?? 0) * 1000, o, h, l, c });
   }
   return candles;
 }
