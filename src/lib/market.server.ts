@@ -20,12 +20,25 @@ export function marketBySymbol(symbol: string) {
 }
 
 const HOSTS = ["https://query2.finance.yahoo.com", "https://query1.finance.yahoo.com"];
+const CACHE_MS = 90_000;
+const cache = new Map<string, { at: number; candles: Candle[] }>();
 
-export async function fetchCandles(yahoo: string): Promise<Candle[]> {
+// The quote provider throttles bursts, so requests are queued one at a time.
+let queue: Promise<unknown> = Promise.resolve();
+function serialize<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(task, task);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function request(yahoo: string): Promise<Candle[]> {
   const path = `/v8/finance/chart/${encodeURIComponent(yahoo)}?interval=15m&range=1mo`;
 
   let res: Response | null = null;
-  for (const host of HOSTS) {
+  for (let attemptIndex = 0; attemptIndex < 4 && !res; attemptIndex++) {
+    const host = HOSTS[attemptIndex % HOSTS.length]!;
     try {
       const attempt = await fetch(`${host}${path}`, {
         headers: {
@@ -34,12 +47,10 @@ export async function fetchCandles(yahoo: string): Promise<Candle[]> {
           Accept: "application/json",
         },
       });
-      if (attempt.ok) {
-        res = attempt;
-        break;
-      }
+      if (attempt.ok) res = attempt;
+      else if (attempt.status === 429) await sleep(600 * (attemptIndex + 1));
     } catch {
-      // try next host
+      await sleep(300);
     }
   }
   if (!res) throw new Error("Datos de mercado no disponibles ahora");
