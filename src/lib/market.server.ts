@@ -42,8 +42,12 @@ async function request(yahoo: string): Promise<Candle[]> {
     try {
       const attempt = await fetch(`${host}${path}`);
       if (attempt.ok) res = attempt;
-      else await sleep(700 * (attemptIndex + 1));
-    } catch {
+      else {
+        console.error("[mkt]", `${host}${path}`, attempt.status);
+        await sleep(700 * (attemptIndex + 1));
+      }
+    } catch (error) {
+      console.error("[mkt]", `${host}${path}`, String(error));
       await sleep(400);
     }
   }
