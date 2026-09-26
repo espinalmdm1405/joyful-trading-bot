@@ -99,6 +99,7 @@ export function fetchCandles(yahoo: string): Promise<Candle[]> {
     try {
       const candles = await request(yahoo);
       cache.set(yahoo, { at: Date.now(), candles });
+      await sleep(250);
       return candles;
     } catch (error) {
       const stale = cache.get(yahoo);
