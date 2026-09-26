@@ -20,26 +20,35 @@ export function marketBySymbol(symbol: string) {
 }
 
 const HOSTS = ["https://query2.finance.yahoo.com", "https://query1.finance.yahoo.com"];
+const CACHE_MS = 300_000;
+const cache = new Map<string, { at: number; candles: Candle[] }>();
 
-export async function fetchCandles(yahoo: string): Promise<Candle[]> {
+// The quote provider throttles bursts, so requests are queued one at a time.
+let queue: Promise<unknown> = Promise.resolve();
+function serialize<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(task, task);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function request(yahoo: string): Promise<Candle[]> {
   const path = `/v8/finance/chart/${encodeURIComponent(yahoo)}?interval=15m&range=1mo`;
 
   let res: Response | null = null;
-  for (const host of HOSTS) {
+  for (let attemptIndex = 0; attemptIndex < 4 && !res; attemptIndex++) {
+    const host = HOSTS[attemptIndex % HOSTS.length]!;
     try {
-      const attempt = await fetch(`${host}${path}`, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
-          Accept: "application/json",
-        },
-      });
-      if (attempt.ok) {
-        res = attempt;
-        break;
+      const attempt = await fetch(`${host}${path}`);
+      if (attempt.ok) res = attempt;
+      else {
+        console.error("[mkt]", `${host}${path}`, attempt.status);
+        await sleep(700 * (attemptIndex + 1));
       }
-    } catch {
-      // try next host
+    } catch (error) {
+      console.error("[mkt]", `${host}${path}`, String(error));
+      await sleep(400);
     }
   }
   if (!res) throw new Error("Datos de mercado no disponibles ahora");
@@ -76,4 +85,24 @@ export async function fetchCandles(yahoo: string): Promise<Candle[]> {
     candles.push({ t: (ts[i] ?? 0) * 1000, o, h, l, c });
   }
   return candles;
+}
+
+export function fetchCandles(yahoo: string): Promise<Candle[]> {
+  const hit = cache.get(yahoo);
+  if (hit && Date.now() - hit.at < CACHE_MS) return Promise.resolve(hit.candles);
+
+  return serialize(async () => {
+    const fresh = cache.get(yahoo);
+    if (fresh && Date.now() - fresh.at < CACHE_MS) return fresh.candles;
+    try {
+      const candles = await request(yahoo);
+      cache.set(yahoo, { at: Date.now(), candles });
+      await sleep(700);
+      return candles;
+    } catch (error) {
+      const stale = cache.get(yahoo);
+      if (stale) return stale.candles;
+      throw error;
+    }
+  });
 }

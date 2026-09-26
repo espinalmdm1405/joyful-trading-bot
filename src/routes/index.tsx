@@ -83,6 +83,7 @@ function Dashboard() {
   const markets = useQuery({
     queryKey: ["markets"],
     queryFn: () => marketsFn(),
+    enabled: !!session,
     refetchInterval: 60_000,
   });
 
