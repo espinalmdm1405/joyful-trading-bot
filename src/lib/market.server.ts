@@ -20,7 +20,7 @@ export function marketBySymbol(symbol: string) {
 }
 
 const HOSTS = ["https://query2.finance.yahoo.com", "https://query1.finance.yahoo.com"];
-const CACHE_MS = 90_000;
+const CACHE_MS = 300_000;
 const cache = new Map<string, { at: number; candles: Candle[] }>();
 
 // The quote provider throttles bursts, so requests are queued one at a time.
@@ -99,7 +99,7 @@ export function fetchCandles(yahoo: string): Promise<Candle[]> {
     try {
       const candles = await request(yahoo);
       cache.set(yahoo, { at: Date.now(), candles });
-      await sleep(250);
+      await sleep(700);
       return candles;
     } catch (error) {
       const stale = cache.get(yahoo);
