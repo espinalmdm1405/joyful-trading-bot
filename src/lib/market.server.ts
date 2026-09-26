@@ -48,8 +48,12 @@ async function request(yahoo: string): Promise<Candle[]> {
         },
       });
       if (attempt.ok) res = attempt;
-      else if (attempt.status === 429) await sleep(600 * (attemptIndex + 1));
-    } catch {
+      else {
+        console.error("[market]", yahoo, host, attempt.status);
+        if (attempt.status === 429) await sleep(600 * (attemptIndex + 1));
+      }
+    } catch (error) {
+      console.error("[market]", yahoo, host, String(error));
       await sleep(300);
     }
   }
