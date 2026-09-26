@@ -6,32 +6,13 @@ export const Route = createFileRoute("/api/public/mkt-probe")({
     handlers: {
       GET: async () => {
         const out: Record<string, string> = {};
+        const base = "https://query2.finance.yahoo.com/v8/finance/chart/";
         const tries: Array<[string, string, RequestInit]> = [
-          [
-            "yahoo-ua",
-            "https://query2.finance.yahoo.com/v8/finance/chart/GC=F?interval=15m&range=5d",
-            { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" } },
-          ],
-          [
-            "yahoo-bare",
-            "https://query2.finance.yahoo.com/v8/finance/chart/GC=F?interval=15m&range=5d",
-            {},
-          ],
-          [
-            "stooq",
-            "https://stooq.com/q/d/l/?s=xauusd&i=d",
-            {},
-          ],
-          [
-            "binance",
-            "https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=5",
-            {},
-          ],
-          [
-            "frankfurter",
-            "https://api.frankfurter.app/latest?from=USD&to=EUR",
-            {},
-          ],
+          ["15m-1mo", `${base}GC=F?interval=15m&range=1mo`, {}],
+          ["15m-10d", `${base}GC=F?interval=15m&range=10d`, {}],
+          ["15m-1mo-dji", `${base}%5EDJI?interval=15m&range=1mo`, {}],
+          ["30m-1mo", `${base}GC=F?interval=30m&range=1mo`, {}],
+          ["1h-3mo", `${base}GC=F?interval=1h&range=3mo`, {}],
         ];
         for (const [name, url, init] of tries) {
           try {
