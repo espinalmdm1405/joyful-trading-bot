@@ -40,13 +40,7 @@ async function request(yahoo: string): Promise<Candle[]> {
   for (let attemptIndex = 0; attemptIndex < 4 && !res; attemptIndex++) {
     const host = HOSTS[attemptIndex % HOSTS.length]!;
     try {
-      const attempt = await fetch(`${host}${path}`, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
-          Accept: "application/json",
-        },
-      });
+      const attempt = await fetch(`${host}${path}`);
       if (attempt.ok) res = attempt;
       else await sleep(700 * (attemptIndex + 1));
     } catch {
