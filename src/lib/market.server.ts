@@ -88,3 +88,22 @@ async function request(yahoo: string): Promise<Candle[]> {
   }
   return candles;
 }
+
+export function fetchCandles(yahoo: string): Promise<Candle[]> {
+  const hit = cache.get(yahoo);
+  if (hit && Date.now() - hit.at < CACHE_MS) return Promise.resolve(hit.candles);
+
+  return serialize(async () => {
+    const fresh = cache.get(yahoo);
+    if (fresh && Date.now() - fresh.at < CACHE_MS) return fresh.candles;
+    try {
+      const candles = await request(yahoo);
+      cache.set(yahoo, { at: Date.now(), candles });
+      return candles;
+    } catch (error) {
+      const stale = cache.get(yahoo);
+      if (stale) return stale.candles;
+      throw error;
+    }
+  });
+}
