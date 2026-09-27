@@ -14,13 +14,13 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar · AuriBot Trading" },
+      { title: "Entrar · AMBAR Trading" },
       {
         name: "description",
         content:
           "Accede a tu bot de trading automático de oro e índices con gestión de riesgo ajustable.",
       },
-      { property: "og:title", content: "Entrar · AuriBot Trading" },
+      { property: "og:title", content: "Entrar · AMBAR Trading" },
       {
         property: "og:description",
         content: "Accede a tu bot de trading automático de oro e índices.",
@@ -82,7 +82,7 @@ function AuthPage() {
       <div className="w-full max-w-sm">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
           <LineChart className="size-6 text-primary" />
-          <span className="font-display text-lg font-semibold tracking-tight">AuriBot</span>
+          <span className="font-display text-lg font-semibold tracking-tight">AMBAR</span>
         </Link>
 
         <div className="panel p-6">

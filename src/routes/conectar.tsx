@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Loader2, Plug } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, PlayCircle, Plug } from "lucide-react";
+import mt5GuideVideo from "@/assets/ambar-conectar-mt5.mp4.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,13 @@ export const Route = createFileRoute("/conectar")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Conectar MetaTrader 5 · AuriBot" },
+      { title: "Conectar MetaTrader 5 · AMBAR" },
       {
         name: "description",
         content:
           "Registra tu cuenta de MetaTrader 5 para que el bot ejecute sus operaciones en tu bróker.",
       },
-      { property: "og:title", content: "Conectar MetaTrader 5 · AuriBot" },
+      { property: "og:title", content: "Conectar MetaTrader 5 · AMBAR" },
       {
         property: "og:description",
         content: "Registra tu cuenta de MetaTrader 5 para operar en tu bróker.",
@@ -97,6 +98,23 @@ function ConnectPage() {
         Mientras tanto el bot ya opera solo con precios reales y capital simulado. Para que envíe
         las órdenes a tu bróker hace falta un puente autorizado que hable con MetaTrader 5.
       </p>
+
+      <section className="mt-5">
+        <div className="mb-3 flex items-center gap-2">
+          <PlayCircle className="size-4 text-primary" />
+          <h2 className="text-sm font-medium">Cómo encontrar y conectar tu cuenta</h2>
+        </div>
+        <video
+          className="aspect-video w-full rounded-lg border border-border bg-surface object-cover"
+          src={mt5GuideVideo}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label="Guía para encontrar y conectar una cuenta de MetaTrader 5 con AMBAR"
+        >
+          Tu navegador no puede reproducir esta guía.
+        </video>
+      </section>
 
       {mt5 && (
         <div className="panel mt-5 flex items-start gap-3 p-4">

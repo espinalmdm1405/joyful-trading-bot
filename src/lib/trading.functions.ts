@@ -21,7 +21,7 @@ export type MarketSnapshot = {
   error?: string;
 };
 
-const MAX_OPEN = 3;
+const MAX_OPEN = 5;
 const SL_ATR = 1.5;
 const TP_ATR = 3;
 
@@ -152,7 +152,7 @@ export const setBotEnabled = createServerFn({ method: "POST" })
 
 export const setRisk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ riskPct: z.number().min(0.1).max(5) }).parse(d))
+  .inputValidator((d) => z.object({ riskPct: z.number().min(0.1).max(10) }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as { supabase: any; userId: string };
     const riskPct = Math.round(data.riskPct * 10) / 10;
@@ -312,7 +312,8 @@ export const runBot = createServerFn({ method: "POST" })
 
     for (const c of candidates) {
       if (slots <= 0) break;
-      const a = c.analysis!;
+      const a = c.analysis;
+      if (!a) continue;
       if (a.atr <= 0) continue;
 
       const { data: fresh } = await supabase
