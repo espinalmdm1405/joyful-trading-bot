@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConectarRouteImport } from './routes/conectar'
-import { Route as ApiPublicMktProbeRouteImport } from './routes/api/public/mkt-probe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,44 +28,35 @@ const ConectarRoute = ConectarRouteImport.update({
   path: '/conectar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicMktProbeRoute = ApiPublicMktProbeRouteImport.update({
-  id: '/api/public/mkt-probe',
-  path: '/api/public/mkt-probe',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/conectar': typeof ConectarRoute
-  '/api/public/mkt-probe': typeof ApiPublicMktProbeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/conectar': typeof ConectarRoute
-  '/api/public/mkt-probe': typeof ApiPublicMktProbeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/conectar': typeof ConectarRoute
-  '/api/public/mkt-probe': typeof ApiPublicMktProbeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/conectar' | '/api/public/mkt-probe'
+  fullPaths: '/' | '/auth' | '/conectar'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/conectar' | '/api/public/mkt-probe'
-  id: '__root__' | '/' | '/auth' | '/conectar' | '/api/public/mkt-probe'
+  to: '/' | '/auth' | '/conectar'
+  id: '__root__' | '/' | '/auth' | '/conectar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ConectarRoute: typeof ConectarRoute
-  ApiPublicMktProbeRoute: typeof ApiPublicMktProbeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,13 +82,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConectarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/mkt-probe': {
-      id: '/api/public/mkt-probe'
-      path: '/api/public/mkt-probe'
-      fullPath: '/api/public/mkt-probe'
-      preLoaderRoute: typeof ApiPublicMktProbeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -106,7 +89,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ConectarRoute: ConectarRoute,
-  ApiPublicMktProbeRoute: ApiPublicMktProbeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
