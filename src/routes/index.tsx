@@ -37,13 +37,13 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "AuriBot · Bot de trading automático de oro e índices" },
+      { title: "AMBAR · Bot de trading automático de oro e índices" },
       {
         name: "description",
         content:
           "Bot que analiza oro e índices, abre y cierra operaciones solo, con riesgo por operación ajustable y conexión a MetaTrader 5.",
       },
-      { property: "og:title", content: "AuriBot · Bot de trading automático" },
+      { property: "og:title", content: "AMBAR · Bot de trading automático" },
       {
         property: "og:description",
         content:
@@ -153,7 +153,7 @@ function Dashboard() {
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <LineChart className="size-5 text-primary" />
-          <span className="font-display text-base font-semibold tracking-tight">AuriBot</span>
+          <span className="font-display text-base font-semibold tracking-tight">AMBAR</span>
         </div>
         <div className="flex items-center gap-1">
           <Button asChild variant="ghost" size="sm">
@@ -235,6 +235,10 @@ function Dashboard() {
             Reiniciar
           </Button>
         </div>
+        <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-xs">
+          <span className="text-muted-foreground">Operaciones simultáneas</span>
+          <span className="tabular font-medium text-foreground">{open.length} de 5 activas</span>
+        </div>
       </section>
 
       {/* Riesgo */}
@@ -249,7 +253,7 @@ function Dashboard() {
         <Slider
           className="mt-4"
           min={0.1}
-          max={5}
+          max={10}
           step={0.1}
           value={[risk]}
           onValueChange={(v) => {
@@ -265,12 +269,17 @@ function Dashboard() {
         />
         <div className="mt-2 flex justify-between text-xs text-muted-foreground">
           <span>Conservador 0.1%</span>
-          <span>Agresivo 5%</span>
+          <span>Muy agresivo 10%</span>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           Con este ajuste el bot arriesga {money((balance * risk) / 100)} como máximo en cada
           operación, y siempre busca el doble de ganancia que de pérdida.
         </p>
+        {risk >= 5 && (
+          <p className="mt-3 rounded-md border border-loss/40 bg-loss/10 px-3 py-2 text-xs leading-relaxed text-loss">
+            Riesgo alto: con varias operaciones abiertas, las pérdidas pueden acumularse rápidamente.
+          </p>
+        )}
       </section>
 
       {/* Mercados */}
