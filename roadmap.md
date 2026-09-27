@@ -1,9 +1,10 @@
-# Bot de trading MT5
+# AMBAR
 
-- [x] Base de datos: cuentas, operaciones, registro, conexión MT5
-- [x] Autenticación (correo + Google)
-- [ ] Motor de análisis (indicadores + IA) sobre oro e índices
-- [ ] Bot automático: abre y cierra operaciones solo
-- [ ] Panel principal con saldo, operaciones y registro
-- [ ] Control deslizante de riesgo ajustable por el usuario
-- [ ] Pantalla de conexión a MetaTrader 5
+- [x] Base de datos, acceso y panel de trading
+- [x] Análisis automático de oro e índices
+- [ ] Cambiar la marca a AMBAR en toda la aplicación
+- [ ] Ampliar el riesgo ajustable hasta 10%
+- [ ] Permitir y mostrar hasta 5 operaciones simultáneas
+- [ ] Crear e integrar video para conectar MetaTrader 5
+- [ ] Verificar el flujo principal en escritorio y móvil
+- [ ] Activar el puente de ejecución real de MetaTrader 5 (requiere proveedor autorizado)
