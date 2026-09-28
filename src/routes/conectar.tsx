@@ -106,7 +106,7 @@ function ConnectPage() {
         </div>
         <video
           className="aspect-video w-full rounded-lg border border-border bg-surface object-cover"
-          src={mt5GuideVideo}
+          src={mt5GuideVideo.url}
           controls
           playsInline
           preload="metadata"
