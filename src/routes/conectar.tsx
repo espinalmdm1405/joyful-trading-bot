@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, Loader2, PlayCircle, Plug } from "lucide-react";
 import mt5GuideVideo from "@/assets/ambar-conectar-mt5.mp4.asset.json";
+import mt5GuidePoster from "@/assets/ambar-conectar-mt5-portada.jpg.asset.json";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -106,7 +107,8 @@ function ConnectPage() {
         </div>
         <video
           className="aspect-video w-full rounded-lg border border-border bg-surface object-cover"
-          src={mt5GuideVideo}
+          src={mt5GuideVideo.url}
+          poster={mt5GuidePoster.url}
           controls
           playsInline
           preload="metadata"
