@@ -104,6 +104,30 @@ export const getMarkets = createServerFn({ method: "GET" }).handler(async () => 
   return { markets: results.map((r) => r.snap) };
 });
 
+export const getLiveAccount = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context as { supabase: any; userId: string };
+    const { data: acc } = await supabase.from("accounts").select("risk_pct").eq("user_id", userId).maybeSingle();
+    const riskPct = Math.min(Number(acc?.risk_pct ?? 0.5), 0.5);
+    if (!metaApiConfigured()) return { connected: false as const, riskPct };
+    try {
+      const info = await accountInfo();
+      const brakeAt = info.balance * 0.97;
+      return {
+        connected: true as const,
+        riskPct,
+        balance: info.balance,
+        equity: info.equity,
+        currency: info.currency,
+        brakeAt,
+        braked: info.equity < brakeAt,
+      };
+    } catch {
+      return { connected: false as const, riskPct };
+    }
+  });
+
 export const getDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -406,9 +430,7 @@ export async function botCycle(supabase: any, userId: string) {
     let slots = MAX_OPEN - active.length;
     let opened = 0;
 
-    // Solo opera en horas con mucho movimiento (Londres y Nueva York): de noche el precio da saltos sin dirección.
-    const hourUtc = new Date().getUTCHours();
-    if (hourUtc < 7 || hourUtc >= 20) slots = 0;
+    // Opera 24 horas (pedido del usuario). Solo se detiene cuando el mercado está cerrado (sin precio).
 
     // Freno de pérdidas: si la cuenta real va perdiendo más del 3% en las operaciones abiertas, no abre más.
     if (live && slots > 0) {

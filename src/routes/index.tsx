@@ -25,6 +25,7 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import {
   getDashboard,
+  getLiveAccount,
   getMarkets,
   runBot,
   setBotEnabled,
@@ -93,6 +94,36 @@ function Dashboard() {
     enabled: !!session,
     refetchInterval: 30_000,
   });
+
+  const liveFn = useServerFn(getLiveAccount);
+  const live = useQuery({
+    queryKey: ["live-account"],
+    queryFn: () => liveFn(),
+    enabled: !!session,
+    refetchInterval: 30_000,
+  });
+
+  // Avisos: cuando AMBAR abre o cierra una operación.
+  const seenLogs = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const list = (dash.data?.logs ?? []) as any[];
+    if (!dash.data) return;
+    if (!seenLogs.current) {
+      seenLogs.current = new Set(list.map((l) => l.id));
+      return;
+    }
+    for (const l of [...list].reverse()) {
+      if (seenLogs.current.has(l.id)) continue;
+      seenLogs.current.add(l.id);
+      if (!["trade", "profit", "loss"].includes(l.level)) continue;
+      const title = l.level === "trade" ? "AMBAR abrió una operación" : "AMBAR cerró una operación";
+      if (l.level === "loss") toast.error(title, { description: l.message });
+      else toast.success(title, { description: l.message });
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        try { new Notification(title, { body: l.message }); } catch { /* móvil */ }
+      }
+    }
+  }, [dash.data]);
 
   const account = dash.data?.account;
   const botOn = !!account?.bot_enabled;
@@ -261,6 +292,61 @@ function Dashboard() {
           <span className="text-muted-foreground">Operaciones simultáneas</span>
           <span className="tabular font-medium text-foreground">{open.length} de 2 activas</span>
         </div>
+      </section>
+
+      {/* Cuenta real */}
+      <section className="panel mt-4 p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-primary" />
+            <p className="text-sm font-medium">Tu cuenta real (MetaTrader 5)</p>
+          </div>
+          {typeof Notification !== "undefined" && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                const p = await Notification.requestPermission();
+                toast[p === "granted" ? "success" : "error"](
+                  p === "granted" ? "Avisos activados." : "Tu navegador no permitió los avisos.",
+                );
+              }}
+            >
+              Activar avisos
+            </Button>
+          )}
+        </div>
+        {live.data?.connected ? (
+          <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <div>
+              <p className="text-muted-foreground">Saldo real</p>
+              <p className="tabular text-lg font-semibold">{live.data.balance.toFixed(2)} {live.data.currency}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Con operaciones abiertas</p>
+              <p className={`tabular text-lg font-semibold ${live.data.equity >= live.data.balance ? "text-primary" : "text-destructive"}`}>
+                {live.data.equity.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Riesgo por operación</p>
+              <p className="tabular text-lg font-semibold">{live.data.riskPct.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Frena si baja de</p>
+              <p className="tabular text-lg font-semibold">{live.data.brakeAt.toFixed(2)}</p>
+            </div>
+            <p className={`col-span-full text-xs ${live.data.braked ? "text-destructive" : "text-muted-foreground"}`}>
+              {live.data.braked
+                ? "Freno activo: la cuenta va perdiendo más del 3%, AMBAR no abre nuevas operaciones hasta que se recupere."
+                : "Todo normal: AMBAR frena solo si la cuenta pierde más del 3% con las operaciones abiertas."}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">
+            {live.isLoading ? "Consultando tu cuenta…" : "No se pudo leer la cuenta real ahora mismo."}
+          </p>
+        )}
       </section>
 
       {/* Resultados de la semana */}
