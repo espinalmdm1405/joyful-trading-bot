@@ -263,6 +263,52 @@ function Dashboard() {
         </div>
       </section>
 
+      {/* Resultados de la semana */}
+      <section className="panel mt-4 p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-primary" />
+            <p className="text-sm font-medium">Resultados de la semana</p>
+          </div>
+          <span
+            className={`tabular text-lg font-semibold ${weekNet >= 0 ? "text-profit" : "text-loss"}`}
+          >
+            {weekNet >= 0 ? "+" : ""}
+            {money(weekNet)}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {weekRows.length} operaciones cerradas · {weekWins} ganadoras · {weekLosses} perdedoras
+          {weekRows.length > 0 &&
+            ` · ${Math.round((weekWins / weekRows.length) * 100)}% de acierto`}
+        </p>
+        <div className="mt-4 flex h-20 items-end justify-between gap-1.5">
+          {perDay.map((d, i) => {
+            const h = Math.max((Math.abs(d.pnl) / maxAbs) * 100, d.pnl === 0 ? 3 : 8);
+            return (
+              <div key={i} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+                <span
+                  className={`tabular text-[10px] ${d.pnl === 0 ? "text-muted-foreground" : d.pnl > 0 ? "text-profit" : "text-loss"}`}
+                >
+                  {d.pnl === 0
+                    ? "—"
+                    : `${d.pnl > 0 ? "+" : ""}${d.pnl.toFixed(2)}`}
+                </span>
+                <div
+                  className={`w-full rounded-sm ${d.pnl === 0 ? "bg-surface-2" : d.pnl > 0 ? "bg-profit" : "bg-loss"}`}
+                  style={{ height: `${h}%` }}
+                />
+                <span className="text-[10px] text-muted-foreground">{d.label}</span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+          Juzga el trabajo del bot por esta línea semanal, no por cada operación suelta: es normal
+          que suba y baje dentro del mismo día.
+        </p>
+      </section>
+
       {/* Riesgo */}
       <section className="panel mt-4 p-5">
         <div className="flex items-center justify-between">
