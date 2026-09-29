@@ -280,6 +280,12 @@ export const runBot = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context as { supabase: any; userId: string };
+    return botCycle(supabase, userId);
+  });
+
+// Ciclo completo del bot. Se usa desde la app y desde el reloj automático del servidor.
+export async function botCycle(supabase: any, userId: string) {
+  {
 
     const { data: account } = await supabase
       .from("accounts")
@@ -312,6 +318,35 @@ export const runBot = createServerFn({ method: "POST" })
           hitTp ? Number(pos.take_profit) : Number(pos.stop_loss),
           pnlOf(pos, hitTp ? Number(pos.take_profit) : Number(pos.stop_loss)),
           hitTp ? "Objetivo alcanzado" : "Stop de protección",
+        );
+        closedCount++;
+        continue;
+      }
+
+      // Cierre inteligente: AMBAR sale antes si el análisis cambia en contra o la ganancia se está perdiendo.
+      if (!account.bot_enabled) continue;
+      const a = snaps.find((s) => s.snap.symbol === pos.symbol)?.analysis;
+      if (!a) continue;
+      const pnl = pnlOf(pos, price);
+      const opposite = (isBuy && a.direction === "sell") || (!isBuy && a.direction === "buy");
+      const tpDist = Math.abs(Number(pos.take_profit) - Number(pos.entry_price));
+      const progress = tpDist > 0 ? ((price - Number(pos.entry_price)) * (isBuy ? 1 : -1)) / tpDist : 0;
+      const momentumFaded = a.direction === "flat" && progress >= 0.5;
+      const ageMin = (Date.now() - new Date(pos.opened_at).getTime()) / 60000;
+      if (opposite || momentumFaded) {
+        if (ageMin < 3) continue; // evita cerrar al instante por ruido
+        if (pos.mt5_position_id && pos.mt5_position_id !== "pending") {
+          for (const id of String(pos.mt5_position_id).split(",")) {
+            try { await closeLivePosition(id); } catch { /* ya cerrada en MT5 */ }
+          }
+        }
+        await settle(
+          supabase,
+          userId,
+          pos,
+          price,
+          pnl,
+          opposite ? "AMBAR cerró: el mercado cambió de dirección" : "AMBAR cerró: aseguró ganancia al perder fuerza",
         );
         closedCount++;
       }
@@ -458,7 +493,8 @@ export const runBot = createServerFn({ method: "POST" })
     }
 
     return { ok: true, opened, closed: closedCount, paused: false };
-  });
+  }
+}
 
 export const saveMt5Connection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
