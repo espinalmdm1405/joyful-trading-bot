@@ -127,7 +127,7 @@ export function analyze(candles: Candle[]): Analysis | null {
     notes.push("Precio por debajo de la media de 50");
   }
 
-  const direction: Analysis["direction"] = score >= 2 ? "buy" : score <= -2 ? "sell" : "flat";
+  const direction: Analysis["direction"] = score >= 3 ? "buy" : score <= -3 ? "sell" : "flat";
 
   return {
     price: last,

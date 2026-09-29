@@ -43,7 +43,7 @@ export type MarketSnapshot = {
   error?: string;
 };
 
-const MAX_OPEN = 5;
+const MAX_OPEN = 2;
 const SL_ATR = 1.2;
 const TP_ATR = 1;
 
