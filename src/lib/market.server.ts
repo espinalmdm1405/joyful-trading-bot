@@ -1,4 +1,5 @@
 import type { Candle } from "./indicators";
+import { brokerCandles } from "./metaapi.server";
 
 export type MarketDef = {
   symbol: string;
@@ -20,7 +21,7 @@ export function marketBySymbol(symbol: string) {
 }
 
 const HOSTS = ["https://query2.finance.yahoo.com", "https://query1.finance.yahoo.com"];
-const CACHE_MS = 300_000;
+const CACHE_MS = 60_000;
 const cache = new Map<string, { at: number; candles: Candle[] }>();
 
 // The quote provider throttles bursts, so requests are queued one at a time.
@@ -91,7 +92,9 @@ export function fetchCandles(yahoo: string): Promise<Candle[]> {
     const fresh = cache.get(yahoo);
     if (fresh && Date.now() - fresh.at < CACHE_MS) return fresh.candles;
     try {
-      const candles = await request(yahoo);
+      const def = MARKETS.find((m) => m.yahoo === yahoo);
+      let candles: Candle[] | null = def ? await brokerCandles(def.symbol) : null;
+      if (!candles || candles.length < 60) candles = await request(yahoo);
       cache.set(yahoo, { at: Date.now(), candles });
       await sleep(700);
       return candles;
