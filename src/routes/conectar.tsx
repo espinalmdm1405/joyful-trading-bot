@@ -127,7 +127,9 @@ function ConnectPage() {
             </p>
             <p className="text-xs text-muted-foreground">{mt5.broker || "Bróker sin especificar"}</p>
             <Badge variant="outline" className="mt-2 border-primary/40 text-primary">
-              Pendiente de activar el puente
+              {mt5.status === "connected"
+                ? "Conectada: el bot opera en tu MT5"
+                : "Pendiente: guarda el número de la cuenta conectada en MetaApi"}
             </Badge>
           </div>
         </div>
