@@ -334,11 +334,12 @@ export async function botCycle(supabase: any, userId: string) {
       // Señales de que el precio se va a devolver: pierde fuerza o llega a zona extrema (RSI).
       const exhausted = isBuy ? a.rsi >= 68 : a.rsi <= 32;
       const weakening = a.direction !== pos.side || exhausted;
-      const takeProfitNow = progress >= 0.2 && weakening; // ya en positivo: asegurar
+      // Recoge rápido: asegura con poca ganancia si pierde fuerza, o a mitad de camino siempre.
+      const takeProfitNow = pnl > 0 && ((progress >= 0.1 && weakening) || progress >= 0.5);
       const cutLoss = opposite && progress <= -0.6; // solo si el giro es claro y la pérdida crece
       const ageMin = (Date.now() - new Date(pos.opened_at).getTime()) / 60000;
       if (takeProfitNow || cutLoss) {
-        if (ageMin < 2) continue; // evita cerrar al instante por ruido
+        if (cutLoss && ageMin < 2) continue; // evita cortar pérdidas por ruido
         if (pos.mt5_position_id && pos.mt5_position_id !== "pending") {
           for (const id of String(pos.mt5_position_id).split(",")) {
             try { await closeLivePosition(id); } catch { /* ya cerrada en MT5 */ }
