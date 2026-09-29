@@ -148,6 +148,28 @@ function Dashboard() {
   const priceOf = (s: string) =>
     markets.data?.markets.find((m) => m.symbol === s)?.price ?? 0;
 
+  const weekRows = dash.data?.weekClosed ?? [];
+  const weekNet = weekRows.reduce((s: number, p: any) => s + Number(p.pnl), 0);
+  const weekWins = weekRows.filter((p: any) => Number(p.pnl) > 0).length;
+  const weekLosses = weekRows.length - weekWins;
+  const dayLabels = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const perDay = Array.from({ length: 7 }, (_, i) => {
+    const start = new Date(today);
+    start.setDate(today.getDate() - (6 - i));
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    const pnl = weekRows
+      .filter((p: any) => {
+        const t = new Date(p.closed_at);
+        return t >= start && t < end;
+      })
+      .reduce((s: number, p: any) => s + Number(p.pnl), 0);
+    return { label: dayLabels[start.getDay()], pnl };
+  });
+  const maxAbs = Math.max(...perDay.map((d) => Math.abs(d.pnl)), 1e-6);
+
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-5 sm:px-6">
       <header className="flex items-center justify-between">
