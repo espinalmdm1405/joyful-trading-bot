@@ -331,10 +331,14 @@ export async function botCycle(supabase: any, userId: string) {
       const opposite = (isBuy && a.direction === "sell") || (!isBuy && a.direction === "buy");
       const tpDist = Math.abs(Number(pos.take_profit) - Number(pos.entry_price));
       const progress = tpDist > 0 ? ((price - Number(pos.entry_price)) * (isBuy ? 1 : -1)) / tpDist : 0;
-      const momentumFaded = a.direction === "flat" && progress >= 0.5;
+      // Señales de que el precio se va a devolver: pierde fuerza o llega a zona extrema (RSI).
+      const exhausted = isBuy ? a.rsi >= 68 : a.rsi <= 32;
+      const weakening = a.direction !== pos.side || exhausted;
+      const takeProfitNow = progress >= 0.2 && weakening; // ya en positivo: asegurar
+      const cutLoss = opposite && progress <= -0.6; // solo si el giro es claro y la pérdida crece
       const ageMin = (Date.now() - new Date(pos.opened_at).getTime()) / 60000;
-      if (opposite || momentumFaded) {
-        if (ageMin < 3) continue; // evita cerrar al instante por ruido
+      if (takeProfitNow || cutLoss) {
+        if (ageMin < 2) continue; // evita cerrar al instante por ruido
         if (pos.mt5_position_id && pos.mt5_position_id !== "pending") {
           for (const id of String(pos.mt5_position_id).split(",")) {
             try { await closeLivePosition(id); } catch { /* ya cerrada en MT5 */ }
@@ -346,7 +350,7 @@ export async function botCycle(supabase: any, userId: string) {
           pos,
           price,
           pnl,
-          opposite ? "AMBAR cerró: el mercado cambió de dirección" : "AMBAR cerró: aseguró ganancia al perder fuerza",
+          takeProfitNow ? "AMBAR cerró en positivo: el mercado se iba a devolver" : "AMBAR cerró: el mercado giró en contra",
         );
         closedCount++;
       }
