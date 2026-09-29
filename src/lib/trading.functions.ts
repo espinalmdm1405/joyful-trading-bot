@@ -390,7 +390,25 @@ export const runBot = createServerFn({ method: "POST" })
         new Promise<null>((r) => setTimeout(() => r(null), 5000)),
       ]);
 
-      let mt5Id: string | null = null;
+      // Reserva el mercado primero: si otro análisis simultáneo ya lo tomó, se omite.
+      const { data: claimed, error: claimErr } = await supabase
+        .from("positions")
+        .insert({
+          user_id: userId,
+          symbol: c.snap.symbol,
+          side: a.direction,
+          size,
+          entry_price: entry,
+          stop_loss: stop,
+          take_profit: target,
+          confidence: a.confidence,
+          open_reason: rationale ?? a.notes.join(" · "),
+          mt5_position_id: live ? "pending" : null,
+        })
+        .select("id")
+        .single();
+      if (claimErr || !claimed) continue;
+
       let liveNote = "";
       if (live) {
         const r = await openLiveOrder({
@@ -402,9 +420,10 @@ export const runBot = createServerFn({ method: "POST" })
           riskPct,
         });
         if (r.ok) {
-          mt5Id = r.positionId;
+          await supabase.from("positions").update({ mt5_position_id: r.positionId }).eq("id", claimed.id);
           liveNote = ` · MT5: ${r.bursts}×${r.volume} lotes de ${r.brokerSymbol}`;
         } else {
+          await supabase.from("positions").delete().eq("id", claimed.id);
           await supabase.from("bot_logs").insert({
             user_id: userId,
             symbol: c.snap.symbol,
@@ -414,19 +433,6 @@ export const runBot = createServerFn({ method: "POST" })
           continue;
         }
       }
-
-      await supabase.from("positions").insert({
-        mt5_position_id: mt5Id,
-        user_id: userId,
-        symbol: c.snap.symbol,
-        side: a.direction,
-        size,
-        entry_price: entry,
-        stop_loss: stop,
-        take_profit: target,
-        confidence: a.confidence,
-        open_reason: rationale ?? a.notes.join(" · "),
-      });
 
       await supabase.from("bot_logs").insert({
         user_id: userId,
