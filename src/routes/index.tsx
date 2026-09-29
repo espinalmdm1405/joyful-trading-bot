@@ -237,7 +237,7 @@ function Dashboard() {
         </div>
         <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-xs">
           <span className="text-muted-foreground">Operaciones simultáneas</span>
-          <span className="tabular font-medium text-foreground">{open.length} de 5 activas</span>
+          <span className="tabular font-medium text-foreground">{open.length} de 2 activas</span>
         </div>
       </section>
 
