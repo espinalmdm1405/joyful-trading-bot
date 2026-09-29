@@ -44,8 +44,9 @@ export type MarketSnapshot = {
 };
 
 const MAX_OPEN = 2;
-const SL_ATR = 1.2;
-const TP_ATR = 1;
+// Stop corto (elegido por el usuario): pérdida pequeña si el mercado va en contra.
+const SL_ATR = 0.6;
+const TP_ATR = 0.8;
 
 async function snapshot(def: (typeof MARKETS)[number]): Promise<{
   snap: MarketSnapshot;
@@ -336,7 +337,7 @@ export async function botCycle(supabase: any, userId: string) {
       const weakening = a.direction !== pos.side || exhausted;
       // Recoge rápido: asegura con poca ganancia si pierde fuerza, o a mitad de camino siempre.
       const takeProfitNow = pnl > 0 && ((progress >= 0.1 && weakening) || progress >= 0.5);
-      const cutLoss = opposite && progress <= -0.6; // solo si el giro es claro y la pérdida crece
+      const cutLoss = opposite && progress <= -0.4; // corta antes si el giro es claro
       const ageMin = (Date.now() - new Date(pos.opened_at).getTime()) / 60000;
       if (takeProfitNow || cutLoss) {
         if (cutLoss && ageMin < 2) continue; // evita cortar pérdidas por ruido
