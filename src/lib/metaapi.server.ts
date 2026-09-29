@@ -91,10 +91,9 @@ export async function openLiveOrder(p: {
     const sym = await brokerSymbol(p.symbol);
     if (!sym) return { ok: false, reason: `tu bróker no tiene ${p.symbol}` };
     const enc = encodeURIComponent(sym);
-    const [spec, price, info] = await Promise.all([
+    const [spec, price] = await Promise.all([
       api(`${c.base}/symbols/${enc}/specification`, {}, c.token),
       api(`${c.base}/symbols/${enc}/current-price`, {}, c.token),
-      accountInfo(),
     ]);
     const isBuy = p.side === "buy";
     const entry = isBuy ? price.ask : price.bid;
