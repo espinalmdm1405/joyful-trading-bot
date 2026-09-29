@@ -467,6 +467,14 @@ export async function botCycle(supabase: any, userId: string) {
       // No persigue el precio: no compra arriba del todo ni vende abajo del todo (RSI extremo).
       if (a.direction === "buy" ? a.rsi >= 62 : a.rsi <= 38) continue;
 
+      // Entrada en retroceso: compra cuando el precio viene bajando, vende cuando viene subiendo.
+      const last = c.snap.series.slice(-6);
+      if (last.length >= 6) {
+        const pull = 0.3 * a.atr;
+        if (a.direction === "buy" && a.price > Math.max(...last) - pull) continue;
+        if (a.direction === "sell" && a.price < Math.min(...last) + pull) continue;
+      }
+
       // Noticias de alto impacto: no entra 30 min antes ni 30 min después.
       const news = await highImpactNear(c.snap.symbol);
       if (news) {
