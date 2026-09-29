@@ -148,6 +148,28 @@ function Dashboard() {
   const priceOf = (s: string) =>
     markets.data?.markets.find((m) => m.symbol === s)?.price ?? 0;
 
+  const weekRows = dash.data?.weekClosed ?? [];
+  const weekNet = weekRows.reduce((s: number, p: any) => s + Number(p.pnl), 0);
+  const weekWins = weekRows.filter((p: any) => Number(p.pnl) > 0).length;
+  const weekLosses = weekRows.length - weekWins;
+  const dayLabels = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const perDay = Array.from({ length: 7 }, (_, i) => {
+    const start = new Date(today);
+    start.setDate(today.getDate() - (6 - i));
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    const pnl = weekRows
+      .filter((p: any) => {
+        const t = new Date(p.closed_at);
+        return t >= start && t < end;
+      })
+      .reduce((s: number, p: any) => s + Number(p.pnl), 0);
+    return { label: dayLabels[start.getDay()], pnl };
+  });
+  const maxAbs = Math.max(...perDay.map((d) => Math.abs(d.pnl)), 1e-6);
+
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-5 sm:px-6">
       <header className="flex items-center justify-between">
@@ -239,6 +261,52 @@ function Dashboard() {
           <span className="text-muted-foreground">Operaciones simultáneas</span>
           <span className="tabular font-medium text-foreground">{open.length} de 2 activas</span>
         </div>
+      </section>
+
+      {/* Resultados de la semana */}
+      <section className="panel mt-4 p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-primary" />
+            <p className="text-sm font-medium">Resultados de la semana</p>
+          </div>
+          <span
+            className={`tabular text-lg font-semibold ${weekNet >= 0 ? "text-profit" : "text-loss"}`}
+          >
+            {weekNet >= 0 ? "+" : ""}
+            {money(weekNet)}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {weekRows.length} operaciones cerradas · {weekWins} ganadoras · {weekLosses} perdedoras
+          {weekRows.length > 0 &&
+            ` · ${Math.round((weekWins / weekRows.length) * 100)}% de acierto`}
+        </p>
+        <div className="mt-4 flex h-20 items-end justify-between gap-1.5">
+          {perDay.map((d, i) => {
+            const h = Math.max((Math.abs(d.pnl) / maxAbs) * 100, d.pnl === 0 ? 3 : 8);
+            return (
+              <div key={i} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+                <span
+                  className={`tabular text-[10px] ${d.pnl === 0 ? "text-muted-foreground" : d.pnl > 0 ? "text-profit" : "text-loss"}`}
+                >
+                  {d.pnl === 0
+                    ? "—"
+                    : `${d.pnl > 0 ? "+" : ""}${d.pnl.toFixed(2)}`}
+                </span>
+                <div
+                  className={`w-full rounded-sm ${d.pnl === 0 ? "bg-surface-2" : d.pnl > 0 ? "bg-profit" : "bg-loss"}`}
+                  style={{ height: `${h}%` }}
+                />
+                <span className="text-[10px] text-muted-foreground">{d.label}</span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+          Juzga el trabajo del bot por esta línea semanal, no por cada operación suelta: es normal
+          que suba y baje dentro del mismo día.
+        </p>
       </section>
 
       {/* Riesgo */}

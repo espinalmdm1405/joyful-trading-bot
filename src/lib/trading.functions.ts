@@ -118,34 +118,44 @@ export const getDashboard = createServerFn({ method: "GET" })
       account = created.data;
     }
 
-    const [{ data: open }, { data: closed }, { data: logs }, { data: mt5 }] = await Promise.all([
-      supabase
-        .from("positions")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "open")
-        .order("opened_at", { ascending: false }),
-      supabase
-        .from("positions")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "closed")
-        .order("closed_at", { ascending: false })
-        .limit(25),
-      supabase
-        .from("bot_logs")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(30),
-      supabase
-        .from("mt5_connections")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [{ data: open }, { data: closed }, { data: logs }, { data: mt5 }, { data: weekClosed }] =
+      await Promise.all([
+        supabase
+          .from("positions")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("status", "open")
+          .order("opened_at", { ascending: false }),
+        supabase
+          .from("positions")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("status", "closed")
+          .order("closed_at", { ascending: false })
+          .limit(25),
+        supabase
+          .from("bot_logs")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(30),
+        supabase
+          .from("mt5_connections")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("positions")
+          .select("id, symbol, pnl, closed_at")
+          .eq("user_id", userId)
+          .eq("status", "closed")
+          .gte("closed_at", weekAgo)
+          .order("closed_at", { ascending: true }),
+      ]);
 
     return {
       account,
@@ -153,6 +163,7 @@ export const getDashboard = createServerFn({ method: "GET" })
       closedPositions: closed ?? [],
       logs: logs ?? [],
       mt5: mt5 ?? null,
+      weekClosed: weekClosed ?? [],
     };
   });
 

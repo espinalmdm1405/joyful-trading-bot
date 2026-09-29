@@ -8,3 +8,5 @@
 - [x] Crear e integrar video para conectar MetaTrader 5
 - [x] Verificar el flujo principal en escritorio y móvil
 - [ ] Activar el puente de ejecución real de MetaTrader 5 (requiere proveedor autorizado)
+- [x] Panel de resultados semanales en la app (últimos 7 días, ganadoras/perdedoras, gráfico diario)
+- [ ] Estrategia continua: AMBAR ya opera con señales fuertes, 2 mercados, stop corto y freno de pérdidas; revisar resultados semanales
