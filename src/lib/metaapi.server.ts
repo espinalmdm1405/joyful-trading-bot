@@ -3,6 +3,9 @@ const PROV = "https://mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai/users/
 
 // Riesgo máximo por operación en la cuenta real, elegido por el usuario.
 export const LIVE_RISK_CAP = 0.5;
+// Lote fijo por ráfaga y ráfagas por señal, elegidos por el usuario.
+const FIXED_LOT = 0.03;
+const BURSTS = 2;
 
 const SYMBOL_CANDIDATES: Record<string, string[]> = {
   XAUUSD: ["XAUUSD", "GOLD", "XAUUSD.r"],
@@ -72,7 +75,7 @@ export async function accountInfo() {
 }
 
 export type LiveOrderResult =
-  | { ok: true; positionId: string; volume: number; brokerSymbol: string; entry: number }
+  | { ok: true; positionId: string; volume: number; bursts: number; brokerSymbol: string; entry: number }
   | { ok: false; reason: string };
 
 export async function openLiveOrder(p: {
@@ -99,44 +102,39 @@ export async function openLiveOrder(p: {
     const minDist = ((spec.stopsLevel ?? 0) + 5) * point;
     const slDist = Math.max(p.slAtr * p.atr, minDist);
     const tpDist = Math.max(p.tpAtr * p.atr, minDist);
-    const risk = Math.min(p.riskPct, LIVE_RISK_CAP);
-    const riskMoney = (info.balance * risk) / 100;
-    const fx = Number(price.accountCurrencyExchangeRate ?? 1) || 1;
-    const lossPerLot = slDist * Number(spec.contractSize ?? 1) * fx;
-    const step = Number(spec.volumeStep ?? 0.01);
-    const raw = riskMoney / lossPerLot;
-    const volume = Math.floor(raw / step + 1e-9) * step;
-    const minVol = Number(spec.minVolume ?? step);
-    if (volume < minVol - 1e-9) {
-      const minLoss = minVol * lossPerLot;
-      return {
-        ok: false,
-        reason: `el lote mínimo arriesgaría ${minLoss.toFixed(2)} ${info.currency} y tu límite es ${riskMoney.toFixed(2)}`,
-      };
-    }
-    const vol = Math.min(Number(volume.toFixed(2)), Number(spec.maxVolume ?? volume));
+    const minVol = Number(spec.minVolume ?? 0.01);
+    const volume = Math.max(FIXED_LOT, minVol);
+    const vol = Number(volume.toFixed(2));
     const digits = spec.digits ?? 2;
     const stopLoss = Number((isBuy ? entry - slDist : entry + slDist).toFixed(digits));
     const takeProfit = Number((isBuy ? entry + tpDist : entry - tpDist).toFixed(digits));
-    const r = await api(
-      `${c.base}/trade`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          actionType: isBuy ? "ORDER_TYPE_BUY" : "ORDER_TYPE_SELL",
-          symbol: sym,
-          volume: vol,
-          stopLoss,
-          takeProfit,
-          comment: "AMBAR",
-        }),
-      },
-      c.token,
-    );
-    if (r?.numericCode !== 10009 && r?.numericCode !== 10008 && !r?.positionId && !r?.orderId) {
-      return { ok: false, reason: r?.message ?? "el bróker rechazó la orden" };
+    const ids: string[] = [];
+    let lastErr = "el bróker rechazó la orden";
+    for (let i = 0; i < BURSTS; i++) {
+      try {
+        const r = await api(
+          `${c.base}/trade`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              actionType: isBuy ? "ORDER_TYPE_BUY" : "ORDER_TYPE_SELL",
+              symbol: sym,
+              volume: vol,
+              stopLoss,
+              takeProfit,
+              comment: `AMBAR ${i + 1}`,
+            }),
+          },
+          c.token,
+        );
+        if (r?.positionId || r?.orderId) ids.push(String(r.positionId ?? r.orderId));
+        else lastErr = r?.message ?? lastErr;
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : lastErr;
+      }
     }
-    return { ok: true, positionId: String(r.positionId ?? r.orderId), volume: vol, brokerSymbol: sym, entry };
+    if (!ids.length) return { ok: false, reason: lastErr };
+    return { ok: true, positionId: ids.join(","), volume: vol, bursts: ids.length, brokerSymbol: sym, entry };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "error con MetaApi" };
   }

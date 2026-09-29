@@ -44,8 +44,8 @@ export type MarketSnapshot = {
 };
 
 const MAX_OPEN = 5;
-const SL_ATR = 1.5;
-const TP_ATR = 3;
+const SL_ATR = 1.2;
+const TP_ATR = 1;
 
 async function snapshot(def: (typeof MARKETS)[number]): Promise<{
   snap: MarketSnapshot;
@@ -223,7 +223,9 @@ export const closePositionNow = createServerFn({ method: "POST" })
     const candles = await fetchCandles(def.yahoo);
     const price = candles[candles.length - 1]?.c ?? Number(pos.entry_price);
     const pnl = pnlOf(pos, price);
-    if (pos.mt5_position_id) await closeLivePosition(pos.mt5_position_id);
+    if (pos.mt5_position_id) {
+      for (const id of String(pos.mt5_position_id).split(",")) await closeLivePosition(id);
+    }
     await settle(supabase, userId, pos, price, pnl, "Cierre manual");
     return { ok: true, pnl };
   });
@@ -382,7 +384,7 @@ export const runBot = createServerFn({ method: "POST" })
         });
         if (r.ok) {
           mt5Id = r.positionId;
-          liveNote = ` · MT5: ${r.volume} lotes de ${r.brokerSymbol}`;
+          liveNote = ` · MT5: ${r.bursts}×${r.volume} lotes de ${r.brokerSymbol}`;
         } else {
           await supabase.from("bot_logs").insert({
             user_id: userId,
