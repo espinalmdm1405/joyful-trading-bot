@@ -5,6 +5,28 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { analyze, type Analysis } from "./indicators";
 import { MARKETS, fetchCandles, marketBySymbol } from "./market.server";
 import { aiRationale } from "./ai-analyst.server";
+import { accountInfo, closeLivePosition, metaApiConfigured, openLiveOrder } from "./metaapi.server";
+
+async function liveEnabled(supabase: any, userId: string) {
+  if (!metaApiConfigured()) return false;
+  const { data: conn } = await supabase
+    .from("mt5_connections")
+    .select("id, login, status")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!conn) return false;
+  try {
+    const info = await accountInfo();
+    const match = String(info.login ?? "") === String(conn.login).trim();
+    const status = match ? "connected" : "pending";
+    if (conn.status !== status) await supabase.from("mt5_connections").update({ status }).eq("id", conn.id);
+    return match;
+  } catch {
+    return false;
+  }
+}
 
 export type MarketSnapshot = {
   symbol: string;
@@ -201,6 +223,7 @@ export const closePositionNow = createServerFn({ method: "POST" })
     const candles = await fetchCandles(def.yahoo);
     const price = candles[candles.length - 1]?.c ?? Number(pos.entry_price);
     const pnl = pnlOf(pos, price);
+    if (pos.mt5_position_id) await closeLivePosition(pos.mt5_position_id);
     await settle(supabase, userId, pos, price, pnl, "Cierre manual");
     return { ok: true, pnl };
   });
@@ -305,6 +328,7 @@ export const runBot = createServerFn({ method: "POST" })
     const busy = new Set((stillOpen ?? []).map((p: any) => p.symbol));
     let slots = MAX_OPEN - (stillOpen?.length ?? 0);
     let opened = 0;
+    const live = await liveEnabled(supabase, userId);
 
     const candidates = snaps
       .filter((s) => s.analysis && s.analysis.direction !== "flat" && !busy.has(s.snap.symbol))
@@ -345,7 +369,33 @@ export const runBot = createServerFn({ method: "POST" })
         riskPct,
       });
 
+      let mt5Id: string | null = null;
+      let liveNote = "";
+      if (live) {
+        const r = await openLiveOrder({
+          symbol: c.snap.symbol,
+          side: a.direction as "buy" | "sell",
+          atr: a.atr,
+          slAtr: SL_ATR,
+          tpAtr: TP_ATR,
+          riskPct,
+        });
+        if (r.ok) {
+          mt5Id = r.positionId;
+          liveNote = ` · MT5: ${r.volume} lotes de ${r.brokerSymbol}`;
+        } else {
+          await supabase.from("bot_logs").insert({
+            user_id: userId,
+            symbol: c.snap.symbol,
+            level: "info",
+            message: `MT5 no abrió ${c.snap.symbol}: ${r.reason}. Se omite la entrada.`,
+          });
+          continue;
+        }
+      }
+
       await supabase.from("positions").insert({
+        mt5_position_id: mt5Id,
         user_id: userId,
         symbol: c.snap.symbol,
         side: a.direction,
@@ -361,7 +411,7 @@ export const runBot = createServerFn({ method: "POST" })
         user_id: userId,
         symbol: c.snap.symbol,
         level: "trade",
-        message: `${isBuy ? "Compra" : "Venta"} en ${c.snap.symbol} a ${entry.toFixed(2)} · confianza ${a.confidence}% · ${rationale ?? a.notes[0]}`,
+        message: `${isBuy ? "Compra" : "Venta"} en ${c.snap.symbol} a ${entry.toFixed(2)} · confianza ${a.confidence}%${liveNote} · ${rationale ?? a.notes[0]}`,
       });
 
       slots--;
