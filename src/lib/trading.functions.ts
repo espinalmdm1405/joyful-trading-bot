@@ -427,6 +427,17 @@ export async function botCycle(supabase: any, userId: string) {
       active = active.filter((p: any) => !ids.has(p.id));
     }
     const busy = new Set(active.map((p: any) => p.symbol));
+    // Pausa por mercado: tras un stop espera 45 min; tras cualquier cierre, 15 min (evita reentrar persiguiendo el precio).
+    const { data: recent } = await supabase
+      .from("positions")
+      .select("symbol, close_reason, closed_at")
+      .eq("user_id", userId)
+      .eq("status", "closed")
+      .gte("closed_at", new Date(Date.now() - 45 * 60_000).toISOString());
+    for (const r of recent ?? []) {
+      const mins = (Date.now() - new Date(r.closed_at).getTime()) / 60000;
+      if (r.close_reason === "Stop de protección" || mins < 15) busy.add(r.symbol);
+    }
     let slots = MAX_OPEN - active.length;
     let opened = 0;
 
@@ -452,6 +463,9 @@ export async function botCycle(supabase: any, userId: string) {
 
       // Confirmación de tendencia grande: solo a favor de la media de ~2 días.
       if (c.trend && c.trend !== a.direction) continue;
+
+      // No persigue el precio: no compra arriba del todo ni vende abajo del todo (RSI extremo).
+      if (a.direction === "buy" ? a.rsi >= 62 : a.rsi <= 38) continue;
 
       // Noticias de alto impacto: no entra 30 min antes ni 30 min después.
       const news = await highImpactNear(c.snap.symbol);
