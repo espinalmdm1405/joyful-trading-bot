@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConectarRouteImport } from './routes/conectar'
+import { Route as ApiPublicBotTickRouteImport } from './routes/api/public/bot-tick'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const ConectarRoute = ConectarRouteImport.update({
   path: '/conectar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBotTickRoute = ApiPublicBotTickRouteImport.update({
+  id: '/api/public/bot-tick',
+  path: '/api/public/bot-tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/conectar': typeof ConectarRoute
+  '/api/public/bot-tick': typeof ApiPublicBotTickRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/conectar': typeof ConectarRoute
+  '/api/public/bot-tick': typeof ApiPublicBotTickRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/conectar': typeof ConectarRoute
+  '/api/public/bot-tick': typeof ApiPublicBotTickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/conectar'
+  fullPaths: '/' | '/auth' | '/conectar' | '/api/public/bot-tick'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/conectar'
-  id: '__root__' | '/' | '/auth' | '/conectar'
+  to: '/' | '/auth' | '/conectar' | '/api/public/bot-tick'
+  id: '__root__' | '/' | '/auth' | '/conectar' | '/api/public/bot-tick'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ConectarRoute: typeof ConectarRoute
+  ApiPublicBotTickRoute: typeof ApiPublicBotTickRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConectarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot-tick': {
+      id: '/api/public/bot-tick'
+      path: '/api/public/bot-tick'
+      fullPath: '/api/public/bot-tick'
+      preLoaderRoute: typeof ApiPublicBotTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ConectarRoute: ConectarRoute,
+  ApiPublicBotTickRoute: ApiPublicBotTickRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
