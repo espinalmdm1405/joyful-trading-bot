@@ -24,6 +24,7 @@ function token() {
 
 async function api(url: string, init: RequestInit = {}, tok = token()) {
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(15000),
     ...init,
     headers: { "auth-token": tok, "content-type": "application/json", ...(init.headers ?? {}) },
   });

@@ -327,10 +327,26 @@ export const runBot = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .eq("status", "open");
 
-    const busy = new Set((stillOpen ?? []).map((p: any) => p.symbol));
-    let slots = MAX_OPEN - (stillOpen?.length ?? 0);
-    let opened = 0;
     const live = await liveEnabled(supabase, userId);
+    let active = stillOpen ?? [];
+    if (live) {
+      // Al pasar a la cuenta real, las operaciones solo simuladas dejan de ocupar espacio.
+      const { data: simOnly } = await supabase
+        .from("positions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("status", "open")
+        .is("mt5_position_id", null);
+      for (const pos of simOnly ?? []) {
+        const price = priceOf.get(pos.symbol) || Number(pos.entry_price);
+        await settle(supabase, userId, pos, price, pnlOf(pos, price), "Cerrada al activar la cuenta real");
+      }
+      const ids = new Set((simOnly ?? []).map((p: any) => p.id));
+      active = active.filter((p: any) => !ids.has(p.id));
+    }
+    const busy = new Set(active.map((p: any) => p.symbol));
+    let slots = MAX_OPEN - active.length;
+    let opened = 0;
 
     const candidates = snaps
       .filter((s) => s.analysis && s.analysis.direction !== "flat" && !busy.has(s.snap.symbol))
@@ -361,7 +377,8 @@ export const runBot = createServerFn({ method: "POST" })
       const size = riskAmount / distance;
       if (!Number.isFinite(size) || size <= 0) continue;
 
-      const rationale = await aiRationale({
+      const rationale = await Promise.race([
+        aiRationale({
         symbol: c.snap.symbol,
         name: c.snap.name,
         analysis: a,
@@ -369,7 +386,9 @@ export const runBot = createServerFn({ method: "POST" })
         stopLoss: stop,
         takeProfit: target,
         riskPct,
-      });
+        }),
+        new Promise<null>((r) => setTimeout(() => r(null), 5000)),
+      ]);
 
       let mt5Id: string | null = null;
       let liveNote = "";

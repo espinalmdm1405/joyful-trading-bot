@@ -41,7 +41,7 @@ async function request(yahoo: string): Promise<Candle[]> {
   for (let attemptIndex = 0; attemptIndex < 4 && !res; attemptIndex++) {
     const host = HOSTS[attemptIndex % HOSTS.length]!;
     try {
-      const attempt = await fetch(`${host}${path}`);
+      const attempt = await fetch(`${host}${path}`, { signal: AbortSignal.timeout(6000) });
       if (attempt.ok) res = attempt;
       else await sleep(700 * (attemptIndex + 1));
     } catch {
@@ -88,13 +88,23 @@ export function fetchCandles(yahoo: string): Promise<Candle[]> {
   const hit = cache.get(yahoo);
   if (hit && Date.now() - hit.at < CACHE_MS) return Promise.resolve(hit.candles);
 
+  const def = MARKETS.find((m) => m.yahoo === yahoo);
+  return (async () => {
+    const broker = def ? await brokerCandles(def.symbol) : null;
+    if (broker && broker.length >= 60) {
+      cache.set(yahoo, { at: Date.now(), candles: broker });
+      return broker;
+    }
+    return yahooCandles(yahoo);
+  })();
+}
+
+function yahooCandles(yahoo: string): Promise<Candle[]> {
   return serialize(async () => {
     const fresh = cache.get(yahoo);
     if (fresh && Date.now() - fresh.at < CACHE_MS) return fresh.candles;
     try {
-      const def = MARKETS.find((m) => m.yahoo === yahoo);
-      let candles: Candle[] | null = def ? await brokerCandles(def.symbol) : null;
-      if (!candles || candles.length < 60) candles = await request(yahoo);
+      const candles = await request(yahoo);
       cache.set(yahoo, { at: Date.now(), candles });
       await sleep(700);
       return candles;
