@@ -457,7 +457,7 @@ export const saveMt5Connection = createServerFn({ method: "POST" })
     await supabase.from("bot_logs").insert({
       user_id: userId,
       level: "info",
-      message: `Cuenta MT5 ${data.login} registrada en ${data.server}. Pendiente de activar el puente de ejecución real.`,
+      message: `Cuenta MT5 ${data.login} registrada en ${data.server}. El bot la conectará en el próximo análisis.`,
     });
     return { ok: true, connection: row };
   });

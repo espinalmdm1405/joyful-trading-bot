@@ -152,3 +152,24 @@ export async function closeLivePosition(positionId: string) {
     return false;
   }
 }
+
+// Velas de 15 minutos directamente del bróker (precios reales de tu MT5).
+export async function brokerCandles(symbol: string) {
+  if (!metaApiConfigured()) return null;
+  try {
+    const c = await ctx();
+    const sym = await brokerSymbol(symbol);
+    if (!sym) return null;
+    const md = c.base.replace("mt-client-api-v1", "mt-market-data-client-api-v1");
+    const rows: any[] = await api(
+      `${md}/historical-market-data/symbols/${encodeURIComponent(sym)}/timeframes/15m/candles?limit=400`,
+      {},
+      c.token,
+    );
+    return rows
+      .map((r) => ({ t: new Date(r.time).getTime(), o: r.open, h: r.high, l: r.low, c: r.close }))
+      .sort((a, b) => a.t - b.t);
+  } catch {
+    return null;
+  }
+}
