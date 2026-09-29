@@ -464,6 +464,9 @@ export async function botCycle(supabase: any, userId: string) {
       // Confirmación de tendencia grande: solo a favor de la media de ~2 días.
       if (c.trend && c.trend !== a.direction) continue;
 
+      // No persigue el precio: no compra arriba del todo ni vende abajo del todo (RSI extremo).
+      if (a.direction === "buy" ? a.rsi >= 62 : a.rsi <= 38) continue;
+
       // Noticias de alto impacto: no entra 30 min antes ni 30 min después.
       const news = await highImpactNear(c.snap.symbol);
       if (news) {
