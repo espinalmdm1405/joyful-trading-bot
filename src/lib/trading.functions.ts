@@ -389,6 +389,18 @@ export async function botCycle(supabase: any, userId: string) {
     let slots = MAX_OPEN - active.length;
     let opened = 0;
 
+    // Solo opera en horas con mucho movimiento (Londres y Nueva York): de noche el precio da saltos sin dirección.
+    const hourUtc = new Date().getUTCHours();
+    if (hourUtc < 7 || hourUtc >= 20) slots = 0;
+
+    // Freno de pérdidas: si la cuenta real va perdiendo más del 3% en las operaciones abiertas, no abre más.
+    if (live && slots > 0) {
+      try {
+        const info = await accountInfo();
+        if (info.equity < info.balance * 0.97) slots = 0;
+      } catch { /* sin datos: sigue normal */ }
+    }
+
     const candidates = snaps
       .filter((s) => s.analysis && s.analysis.direction !== "flat" && !busy.has(s.snap.symbol))
       .sort((a, b) => (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0));
