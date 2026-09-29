@@ -1,0 +1,1 @@
+ALTER TABLE public.positions ADD COLUMN IF NOT EXISTS mt5_position_id text;
