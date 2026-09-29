@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { analyze, type Analysis } from "./indicators";
+import { highImpactNear } from "./news.server";
 import { MARKETS, fetchCandles, marketBySymbol } from "./market.server";
 import { aiRationale } from "./ai-analyst.server";
 import { accountInfo, closeLivePosition, metaApiConfigured, openLiveOrder } from "./metaapi.server";
@@ -51,13 +52,18 @@ const TP_ATR = 0.8;
 async function snapshot(def: (typeof MARKETS)[number]): Promise<{
   snap: MarketSnapshot;
   analysis: Analysis | null;
+  trend?: "buy" | "sell" | null;
 }> {
   try {
     const candles = await fetchCandles(def.yahoo);
     const a = analyze(candles);
     if (!a) throw new Error("Historial insuficiente");
+    const long = candles.slice(-200);
+    const avg = long.reduce((s, c) => s + c.c, 0) / long.length;
+    const trend = long.length >= 150 ? (a.price > avg ? "buy" : "sell") : null;
     return {
       analysis: a,
+      trend,
       snap: {
         symbol: def.symbol,
         name: def.name,
@@ -421,6 +427,20 @@ export async function botCycle(supabase: any, userId: string) {
       const a = c.analysis;
       if (!a) continue;
       if (a.atr <= 0) continue;
+
+      // Confirmación de tendencia grande: solo a favor de la media de ~2 días.
+      if (c.trend && c.trend !== a.direction) continue;
+
+      // Noticias de alto impacto: no entra 30 min antes ni 30 min después.
+      const news = await highImpactNear(c.snap.symbol);
+      if (news) {
+        await supabase.from("bot_logs").insert({
+          user_id: userId,
+          level: "info",
+          message: `${c.snap.symbol}: espero, hay noticia fuerte (${news}).`,
+        });
+        continue;
+      }
 
       const { data: fresh } = await supabase
         .from("accounts")
