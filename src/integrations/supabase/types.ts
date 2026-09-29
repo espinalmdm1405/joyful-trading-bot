@@ -109,6 +109,7 @@ export type Database = {
           confidence: number
           entry_price: number
           id: string
+          mt5_position_id: string | null
           open_reason: string
           opened_at: string
           pnl: number | null
@@ -127,6 +128,7 @@ export type Database = {
           confidence?: number
           entry_price: number
           id?: string
+          mt5_position_id?: string | null
           open_reason?: string
           opened_at?: string
           pnl?: number | null
@@ -145,6 +147,7 @@ export type Database = {
           confidence?: number
           entry_price?: number
           id?: string
+          mt5_position_id?: string | null
           open_reason?: string
           opened_at?: string
           pnl?: number | null
