@@ -324,7 +324,7 @@ function Dashboard() {
             </div>
             <div>
               <p className="text-muted-foreground">Con operaciones abiertas</p>
-              <p className={`tabular text-lg font-semibold ${live.data.equity >= live.data.balance ? "text-success" : "text-destructive"}`}>
+              <p className={`tabular text-lg font-semibold ${live.data.equity >= live.data.balance ? "text-primary" : "text-destructive"}`}>
                 {live.data.equity.toFixed(2)}
               </p>
             </div>
