@@ -9,4 +9,5 @@
 - [x] Verificar el flujo principal en escritorio y móvil
 - [ ] Activar el puente de ejecución real de MetaTrader 5 (requiere proveedor autorizado)
 - [x] Panel de resultados semanales en la app (últimos 7 días, ganadoras/perdedoras, gráfico diario)
-- [ ] Estrategia continua: AMBAR ya opera con señales fuertes, 2 mercados, stop corto y freno de pérdidas; revisar resultados semanales
+- [x] Módulo avanzado: estrategia con reglas, puntuación, relación 1,5, prueba histórica
+- [ ] Revisar resultados reales semanales de la nueva estrategia (validación histórica salió negativa)
