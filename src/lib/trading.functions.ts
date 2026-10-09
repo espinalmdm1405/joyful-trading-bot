@@ -380,11 +380,11 @@ export async function botCycle(supabase: any, userId: string) {
       const exhausted = isBuy ? a.rsi >= 68 : a.rsi <= 32;
       const weakening = a.direction !== pos.side || exhausted;
       // Recoge rápido: asegura con poca ganancia si pierde fuerza, o a mitad de camino siempre.
-      const takeProfitNow = pnl > 0 && ((progress >= 0.1 && weakening) || progress >= 0.5);
-      const cutLoss = opposite && progress <= -0.4; // corta antes si el giro es claro
+      const takeProfitNow = pnl > 0 && progress >= 0.6 && weakening; // protege ganancia solo con recorrido real
+      const cutLoss = opposite && progress <= -0.5; // regla objetiva: giro confirmado y precio cerca del stop
       const ageMin = (Date.now() - new Date(pos.opened_at).getTime()) / 60000;
       if (takeProfitNow || cutLoss) {
-        if (cutLoss && ageMin < 2) continue; // evita cortar pérdidas por ruido
+        if (cutLoss && ageMin < 5) continue; // evita cortar pérdidas por ruido
         if (pos.mt5_position_id && pos.mt5_position_id !== "pending") {
           for (const id of String(pos.mt5_position_id).split(",")) {
             try { await closeLivePosition(id); } catch { /* ya cerrada en MT5 */ }
