@@ -449,11 +449,13 @@ export async function botCycle(supabase: any, userId: string) {
     // Opera 24 horas (pedido del usuario). Solo se detiene cuando el mercado está cerrado (sin precio).
 
     // Freno de pérdidas: si la cuenta real va perdiendo más del 3% en las operaciones abiertas, no abre más.
+    let liveBalance: number | null = null;
     if (live && slots > 0) {
       try {
         const info = await accountInfo();
+        liveBalance = info.balance;
         if (info.equity < info.balance * 0.97) slots = 0;
-      } catch { /* sin datos: sigue normal */ }
+      } catch { slots = 0; /* sin datos de la cuenta: bloquea entradas nuevas */ }
     }
 
     // Estrategia con reglas verificables (src/lib/strategy.ts): COMPRA, VENTA o ESPERAR.
@@ -534,7 +536,7 @@ export async function botCycle(supabase: any, userId: string) {
           tpDist: d.risk * STRATEGY.rr,
           plannedEntry: entry,
           maxSpreadOfStop: STRATEGY.maxSpreadOfStop,
-          maxLossMoney: balance * MAX_LOSS_PER_SIGNAL,
+          maxLossMoney: (liveBalance ?? balance) * MAX_LOSS_PER_SIGNAL,
           riskPct,
         });
         if (r.ok) {
