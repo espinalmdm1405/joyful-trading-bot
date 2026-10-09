@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { analyze, type Analysis } from "./indicators";
+import { analyze, type Analysis, type Candle } from "./indicators";
+import { evaluate, STRATEGY } from "./strategy";
 import { highImpactNear } from "./news.server";
 import { MARKETS, fetchCandles, marketBySymbol } from "./market.server";
 import { aiRationale } from "./ai-analyst.server";
@@ -53,6 +54,7 @@ async function snapshot(def: (typeof MARKETS)[number]): Promise<{
   snap: MarketSnapshot;
   analysis: Analysis | null;
   trend?: "buy" | "sell" | null;
+  candles?: Candle[];
 }> {
   try {
     const candles = await fetchCandles(def.yahoo);
@@ -64,6 +66,7 @@ async function snapshot(def: (typeof MARKETS)[number]): Promise<{
     return {
       analysis: a,
       trend,
+      candles,
       snap: {
         symbol: def.symbol,
         name: def.name,
@@ -451,41 +454,20 @@ export async function botCycle(supabase: any, userId: string) {
       } catch { /* sin datos: sigue normal */ }
     }
 
-    const candidates = snaps
-      .filter((s) => s.analysis && s.analysis.direction !== "flat" && !busy.has(s.snap.symbol))
-      .sort((a, b) => (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0));
+    // Estrategia con reglas verificables (src/lib/strategy.ts): COMPRA, VENTA o ESPERAR.
+    const decisions = [];
+    for (const s of snaps) {
+      if (busy.has(s.snap.symbol) || !s.candles || !s.analysis) continue;
+      const pre = evaluate(s.candles);
+      const news = pre.action !== "wait" ? await highImpactNear(s.snap.symbol) : null;
+      const d = news ? evaluate(s.candles, { newsBlocked: news }) : pre;
+      decisions.push({ c: s, d });
+    }
+    const candidates = decisions.filter((x) => x.d.action !== "wait").sort((x, y) => y.d.score - x.d.score);
 
-    for (const c of candidates) {
+    for (const { c, d } of candidates) {
       if (slots <= 0) break;
-      const a = c.analysis;
-      if (!a) continue;
-      if (a.atr <= 0) continue;
-
-      // Confirmación de tendencia grande: solo a favor de la media de ~2 días.
-      if (c.trend && c.trend !== a.direction) continue;
-
-      // No persigue el precio: no compra arriba del todo ni vende abajo del todo (RSI extremo).
-      if (a.direction === "buy" ? a.rsi >= 62 : a.rsi <= 38) continue;
-
-      // Entrada en retroceso: compra cuando el precio viene bajando, vende cuando viene subiendo.
-      const last = c.snap.series.slice(-6);
-      if (last.length >= 6) {
-        const pull = 0.3 * a.atr;
-        if (a.direction === "buy" && a.price > Math.max(...last) - pull) continue;
-        if (a.direction === "sell" && a.price < Math.min(...last) + pull) continue;
-      }
-
-      // Noticias de alto impacto: no entra 30 min antes ni 30 min después.
-      const news = await highImpactNear(c.snap.symbol);
-      if (news) {
-        await supabase.from("bot_logs").insert({
-          user_id: userId,
-          level: "info",
-          message: `${c.snap.symbol}: espero, hay noticia fuerte (${news}).`,
-        });
-        continue;
-      }
-
+      const a = c.analysis!;
       const { data: fresh } = await supabase
         .from("accounts")
         .select("balance, risk_pct")
@@ -495,10 +477,11 @@ export async function botCycle(supabase: any, userId: string) {
       const riskPct = Number(fresh?.risk_pct ?? account.risk_pct);
       if (balance <= 0) break;
 
-      const isBuy = a.direction === "buy";
-      const entry = a.price;
-      const stop = isBuy ? entry - SL_ATR * a.atr : entry + SL_ATR * a.atr;
-      const target = isBuy ? entry + TP_ATR * a.atr : entry - TP_ATR * a.atr;
+      const side = d.action as "buy" | "sell";
+      const isBuy = side === "buy";
+      const entry = d.entry;
+      const stop = d.stopLoss;
+      const target = d.takeProfit;
       const riskAmount = (balance * riskPct) / 100;
       const distance = Math.abs(entry - stop);
       if (distance <= 0) continue;
@@ -509,7 +492,7 @@ export async function botCycle(supabase: any, userId: string) {
         aiRationale({
         symbol: c.snap.symbol,
         name: c.snap.name,
-        analysis: a,
+        analysis: { ...a, direction: side },
         entry,
         stopLoss: stop,
         takeProfit: target,
@@ -524,13 +507,13 @@ export async function botCycle(supabase: any, userId: string) {
         .insert({
           user_id: userId,
           symbol: c.snap.symbol,
-          side: a.direction,
+          side,
           size,
           entry_price: entry,
           stop_loss: stop,
           take_profit: target,
-          confidence: a.confidence,
-          open_reason: rationale ?? a.notes.join(" · "),
+          confidence: d.score,
+          open_reason: `${d.summary}${rationale ? " · " + rationale : ""}`,
           mt5_position_id: live ? "pending" : null,
         })
         .select("id")
@@ -541,10 +524,14 @@ export async function botCycle(supabase: any, userId: string) {
       if (live) {
         const r = await openLiveOrder({
           symbol: c.snap.symbol,
-          side: a.direction as "buy" | "sell",
-          atr: a.atr,
+          side,
+          atr: d.atr,
           slAtr: SL_ATR,
           tpAtr: TP_ATR,
+          slDist: d.risk,
+          tpDist: d.risk * STRATEGY.rr,
+          plannedEntry: entry,
+          maxSpreadOfStop: STRATEGY.maxSpreadOfStop,
           riskPct,
         });
         if (r.ok) {
@@ -566,7 +553,7 @@ export async function botCycle(supabase: any, userId: string) {
         user_id: userId,
         symbol: c.snap.symbol,
         level: "trade",
-        message: `${isBuy ? "Compra" : "Venta"} en ${c.snap.symbol} a ${entry.toFixed(2)} · confianza ${a.confidence}%${liveNote} · ${rationale ?? a.notes[0]}`,
+        message: `${isBuy ? "Compra" : "Venta"} en ${c.snap.symbol} a ${entry.toFixed(2)} · puntuación ${d.score}/100 · stop ${stop.toFixed(2)} · objetivo ${target.toFixed(2)}${liveNote}`,
       });
 
       slots--;
@@ -574,14 +561,11 @@ export async function botCycle(supabase: any, userId: string) {
     }
 
     if (opened === 0 && closedCount === 0) {
-      const best = snaps.reduce(
-        (acc, s) => Math.max(acc, s.analysis?.confidence ?? 0),
-        0,
-      );
+      const best = [...decisions].sort((x, y) => y.d.score - x.d.score)[0];
       await supabase.from("bot_logs").insert({
         user_id: userId,
         level: "scan",
-        message: `Análisis completado. Sin entradas de alta probabilidad (mejor señal ${best}%).`,
+        message: best ? `${best.c.snap.symbol}: ${best.d.summary}` : "Sin datos suficientes: no se abre nada.",
       });
     }
 

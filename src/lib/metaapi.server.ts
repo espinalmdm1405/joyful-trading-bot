@@ -86,6 +86,10 @@ export async function openLiveOrder(p: {
   slAtr: number;
   tpAtr: number;
   riskPct: number;
+  slDist?: number;
+  tpDist?: number;
+  plannedEntry?: number;
+  maxSpreadOfStop?: number;
 }): Promise<LiveOrderResult> {
   try {
     const c = await ctx();
@@ -100,8 +104,14 @@ export async function openLiveOrder(p: {
     const entry = isBuy ? price.ask : price.bid;
     const point = Math.pow(10, -(spec.digits ?? 2));
     const minDist = ((spec.stopsLevel ?? 0) + 5) * point;
-    const slDist = Math.max(p.slAtr * p.atr, minDist);
-    const tpDist = Math.max(p.tpAtr * p.atr, minDist);
+    const slDist = Math.max(p.slDist ?? p.slAtr * p.atr, minDist);
+    const tpDist = Math.max(p.tpDist ?? p.tpAtr * p.atr, minDist);
+    if (!(price?.ask > 0 && price?.bid > 0)) return { ok: false, reason: "sin precio del bróker" };
+    const spread = price.ask - price.bid;
+    if (p.maxSpreadOfStop && spread > p.maxSpreadOfStop * slDist)
+      return { ok: false, reason: `spread alto (${spread.toFixed(2)})` };
+    if (p.plannedEntry && Math.abs(entry - p.plannedEntry) > 0.3 * slDist)
+      return { ok: false, reason: "el precio cambió mucho desde el análisis, se cancela" };
     const minVol = Number(spec.minVolume ?? 0.01);
     const volume = Math.max(FIXED_LOT, minVol);
     const vol = Number(volume.toFixed(2));
