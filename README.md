@@ -1,14 +1,18 @@
-# Welcome to your Lovable project
+# Trading Buddy Bot
+
+Hola quiero crear una aplicación bot que aga trading por mi. Que analice las operaciones y aga dinero por mi en meta trader 5 que yo pueda conectarla y ese bot me aga las operaciones con su propio análisis
 
 This project was built with [Lovable](https://lovable.dev).
 
+**Live app**: https://joyful-trading-bot.lovable.app
+
 ## Build with Lovable
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/6eab6a1e-8176-41ef-8f52-57f2cdd097fd).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
@@ -20,10 +24,3 @@ cd <repository-name>
 npm i
 npm run dev
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
