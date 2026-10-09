@@ -90,6 +90,7 @@ export async function openLiveOrder(p: {
   tpDist?: number;
   plannedEntry?: number;
   maxSpreadOfStop?: number;
+  maxLossMoney?: number;
 }): Promise<LiveOrderResult> {
   try {
     const c = await ctx();
@@ -113,14 +114,24 @@ export async function openLiveOrder(p: {
     if (p.plannedEntry && Math.abs(entry - p.plannedEntry) > 0.3 * slDist)
       return { ok: false, reason: "el precio cambió mucho desde el análisis, se cancela" };
     const minVol = Number(spec.minVolume ?? 0.01);
-    const volume = Math.max(FIXED_LOT, minVol);
+    // Pérdida máxima si toca el stop: nunca más de lo permitido por señal.
+    const contract = Number(spec.contractSize ?? 1);
+    const lossPerLot = slDist * contract;
+    let volume = Math.max(FIXED_LOT, minVol);
+    let bursts = BURSTS;
+    if (p.maxLossMoney && lossPerLot > 0) {
+      while (bursts > 1 && lossPerLot * volume * bursts > p.maxLossMoney) bursts--;
+      if (lossPerLot * volume * bursts > p.maxLossMoney) volume = minVol;
+      if (lossPerLot * volume * bursts > p.maxLossMoney)
+        return { ok: false, reason: `el stop costaría ${(lossPerLot * volume).toFixed(2)} y supera el límite de ${p.maxLossMoney.toFixed(2)}` };
+    }
     const vol = Number(volume.toFixed(2));
     const digits = spec.digits ?? 2;
     const stopLoss = Number((isBuy ? entry - slDist : entry + slDist).toFixed(digits));
     const takeProfit = Number((isBuy ? entry + tpDist : entry - tpDist).toFixed(digits));
     const ids: string[] = [];
     let lastErr = "el bróker rechazó la orden";
-    for (let i = 0; i < BURSTS; i++) {
+    for (let i = 0; i < bursts; i++) {
       try {
         const r = await api(
           `${c.base}/trade`,

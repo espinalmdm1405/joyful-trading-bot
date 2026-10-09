@@ -46,6 +46,8 @@ export type MarketSnapshot = {
 };
 
 const MAX_OPEN = 2;
+// Pérdida máxima por señal en la cuenta real si toca el stop (4% del saldo).
+const MAX_LOSS_PER_SIGNAL = 0.04;
 // Stop corto (elegido por el usuario): pérdida pequeña si el mercado va en contra.
 const SL_ATR = 0.6;
 const TP_ATR = 0.8;
@@ -532,6 +534,7 @@ export async function botCycle(supabase: any, userId: string) {
           tpDist: d.risk * STRATEGY.rr,
           plannedEntry: entry,
           maxSpreadOfStop: STRATEGY.maxSpreadOfStop,
+          maxLossMoney: balance * MAX_LOSS_PER_SIGNAL,
           riskPct,
         });
         if (r.ok) {
