@@ -1,0 +1,3 @@
+-- lovable-cron-fallback-reviewed: trading bot must analyze markets every minute while the app is closed; only moves existing job to the published URL
+select cron.unschedule('ambar-bot-tick');
+select cron.schedule('ambar-bot-tick', '* * * * *', $$ select net.http_post(url:='https://joyful-trading-bot.lovable.app/api/public/bot-tick', headers:=jsonb_build_object('Content-Type','application/json','x-cron-token',(select token from public.cron_tokens where name='bot')), body:='{}'::jsonb, timeout_milliseconds:=120000); $$);
