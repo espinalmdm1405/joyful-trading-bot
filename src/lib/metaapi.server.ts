@@ -8,11 +8,11 @@ const FIXED_LOT = 0.03;
 const BURSTS = 2;
 
 const SYMBOL_CANDIDATES: Record<string, string[]> = {
-  XAUUSD: ["XAUUSD", "GOLD", "XAUUSD.r"],
-  US30: ["DJ30.r", "DJ30", "US30", "US30.r"],
-  NAS100: ["NAS100.r", "NAS100", "USTEC", "US100"],
-  SPX500: ["SP500.r", "SP500", "US500", "SPX500"],
-  GER40: ["GER40.r", "GER40", "DE40"],
+  XAUUSD: ["XAUUSD", "GOLD", "XAUUSD.r", "XAUUSD-STD"],
+  US30: ["DJ30.r", "DJ30", "US30", "US30.r", "DJ30.s"],
+  NAS100: ["NAS100.r", "NAS100", "USTEC", "US100", "NAS100.s"],
+  SPX500: ["SP500.r", "SP500", "US500", "SPX500", "SP500.s"],
+  GER40: ["GER40.r", "GER40", "DE40", "GER40.s"],
 };
 
 type Ctx = { token: string; accountId: string; base: string; symbols: Set<string> };
