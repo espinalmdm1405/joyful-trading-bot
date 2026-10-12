@@ -38,7 +38,7 @@ export function metaApiConfigured() {
   return !!token();
 }
 
-export async function ctx(): Promise<Ctx> {
+async function ctx(): Promise<Ctx> {
   if (cached && Date.now() - cached.at < 10 * 60_000) return cached.ctx;
   const tok = token();
   const wanted = (process.env["METAAPI_ACCOUNT_ID"] ?? "").trim().toLowerCase();
