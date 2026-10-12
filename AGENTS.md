@@ -12,3 +12,4 @@
 - AMBAR limita la exposición a cinco posiciones simultáneas, una por mercado, para evitar duplicar riesgo en el mismo símbolo.
 - La guía MT5 se entrega como video MP4 estático dentro de la aplicación para reproducirse sin servicios externos.
 - Entry rules live as pure functions in src/lib/strategy.ts (STRATEGY config) and are verified with scripts/backtest.ts and scripts/scenarios.ts; why: the same rules run live and in historical tests.
+- The M1 scalping strategy lives in src/lib/strategy-m1.ts and is verified with scripts/backtest-m1.ts; it is not wired into botCycle until a backtest shows positive expectancy; why: avoid risking the live account on an unproven strategy.
