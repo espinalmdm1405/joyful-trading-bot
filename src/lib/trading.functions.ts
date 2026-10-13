@@ -382,7 +382,16 @@ export async function botCycle(supabase: any, userId: string) {
       const exhausted = isBuy ? a.rsi >= 68 : a.rsi <= 32;
       const weakening = a.direction !== pos.side || exhausted;
       // Recoge rápido: asegura con poca ganancia si pierde fuerza, o a mitad de camino siempre.
-      const takeProfitNow = pnl > 0 && progress >= 0.6 && weakening; // protege ganancia solo con recorrido real
+      // Vela rápida a favor que deja mecha en contra (rechazo): el precio suele devolverse.
+      const cs = snaps.find((s) => s.snap.symbol === pos.symbol)?.candles;
+      const k = cs?.at(-1);
+      let rejection = false;
+      if (k && a.atr > 0) {
+        const range = k.h - k.l;
+        const wick = isBuy ? k.h - Math.max(k.o, k.c) : Math.min(k.o, k.c) - k.l;
+        rejection = range > 1.2 * a.atr && wick > 0.4 * range;
+      }
+      const takeProfitNow = pnl > 0 && ((progress >= 0.6 && weakening) || (progress >= 0.3 && rejection));
       const cutLoss = opposite && progress <= -0.5; // regla objetiva: giro confirmado y precio cerca del stop
       const ageMin = (Date.now() - new Date(pos.opened_at).getTime()) / 60000;
       if (takeProfitNow || cutLoss) {
